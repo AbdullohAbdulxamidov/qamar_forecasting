@@ -1,0 +1,19 @@
+# Python virtual environment (juda og'ir, GitHub'ga kirmasligi shart)
+venv/
+ENV/
+env/
+
+# Python kesh fayllari
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest kesh fayllari
+.pytest_cache/
+
+# Tizim fayllari
+.DS_Store
+Thumbs.db
+
+# Izoh: data/books.db va collection.log GitHub'ga KIRISHI KERAK.
+# Chunki Sanjar Bekov ma'lumotlar bazasi va loglar borligini aynan GitHub'da tekshiradi.

@@ -28,3 +28,16 @@ Category: Green - AI Integrated (Coursework Brief Compliant)
 * **Outcome & Verification:**
   - 3 out of 3 automated unit tests passed successfully (`python -m pytest`).
   - Baseline primary data collection executed with rate-limiting (`time.sleep(2)`) and audit logging to `data/collection.log`.
+
+
+---
+
+## Log Entry 2: Week 6 Cohort Finalization
+* **Date:** 2026-10-22 (Week 6)
+* **Milestone:** Fixed Cohort (60 Books) Finalized & Baseline Snapshot Captured
+* **Implementation Details:**
+  1. Updated database schema in `src/database.py` to persist `raw_badge_text` as raw measurement evidence.
+  2. Fixed SQL escape handling in `src/scraper.py` for text with apostrophes.
+  3. Finalized 60 unique book URLs in `data/cohort_urls.txt` with verified rolling 7-day sales badges.
+  4. Executed Week 6 baseline snapshot: 60 books and 60 non-null weekly observations stored in `data/books.db`.
+  5. Verified code health with `pytest` (all 3 tests passed).

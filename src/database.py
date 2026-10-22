@@ -31,21 +31,20 @@ def init_db():
 
     # 2. Har haftalik o'zgaruvchan kuzatuvlar jadvali
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS weekly_observations (
-        obs_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        book_id INTEGER NOT NULL,
-        week_number INTEGER NOT NULL,
-        observation_date DATE NOT NULL,
-        price_uzs REAL,
-        reported_weekly_sales INTEGER,
-        category_rank INTEGER,
-        rating REAL,
-        review_count INTEGER,
-        is_in_stock INTEGER DEFAULT 1,
-        FOREIGN KEY (book_id) REFERENCES books (book_id) ON DELETE CASCADE,
-        UNIQUE (book_id, week_number)
-    );
-    """)
+        CREATE TABLE IF NOT EXISTS weekly_observations (
+            obs_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_id INTEGER NOT NULL,
+            week_number INTEGER NOT NULL,
+            observation_date DATE NOT NULL,
+            price_uzs REAL,
+            reported_weekly_sales INTEGER,
+            raw_badge_text TEXT,
+            category_rank INTEGER,
+            is_in_stock INTEGER DEFAULT 1,
+            FOREIGN KEY (book_id) REFERENCES books (book_id) ON DELETE CASCADE,
+            UNIQUE (book_id, week_number)
+        );
+        """)
 
     conn.commit()
     conn.close()

@@ -1,15 +1,16 @@
 import os
 import re
+import time
 import logging
 import sqlite3
-import time
 from datetime import date
 import requests
 from bs4 import BeautifulSoup
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_FILE = os.path.join(BASE_DIR, "data", "collection.log")
-DB_PATH = os.path.join(BASE_DIR, "data", "books.db")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+LOG_FILE = os.path.join(PROJECT_ROOT, "data", "collection.log")
+DB_PATH = os.path.join(PROJECT_ROOT, "data", "books.db")
 
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 logging.basicConfig(
@@ -28,49 +29,49 @@ def clean_number(text: str):
     nums = re.findall(r"\d+", text.replace(" ", "").replace("\xa0", ""))
     return int("".join(nums)) if nums else None
 
-def parse_book_page(url: str):
+def parse_book_page(url: str, week_number: int = 6):
     try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
+        response = requests.get(url, headers=HEADERS, timeout=15)
         if response.status_code != 200:
-            logging.error(f"Sahifani ochib bo'lmadi: {url} (Status: {response.status_code})")
+            logging.error(f"Failed to fetch page: {url} (Status: {response.status_code})")
             return None
 
         soup = BeautifulSoup(response.text, "html.parser")
         page_text = soup.get_text()
 
-        # 1. Kitob nomi
+        # 1. Title
         title_el = soup.find("h1") or soup.find("h2")
         title = title_el.get_text(strip=True) if title_el else "Noma'lum"
 
-        # 2. Muallif (h1 ostidagi matn)
+        # 2. Author (search layout below title)
         author = "Noma'lum"
         if title_el:
-            parent = title_el.parent
-            if parent:
-                # Odatda sarlavha ostidagi keyingi blok muallif bo'ladi
-                author_candidate = title_el.find_next_sibling()
-                if author_candidate:
-                    author = author_candidate.get_text(strip=True)
+            next_sib = title_el.find_next_sibling()
+            if next_sib and next_sib.get_text(strip=True):
+                author = next_sib.get_text(strip=True)
 
-        # 3. Narxi (price_uzs)
+        # 3. Price (price_uzs)
         price = None
         price_match = re.search(r"(\d[\d\s\xa0]*)\s*(?:so['’`]?m|UZS)", page_text, re.IGNORECASE)
         if price_match:
             price = clean_number(price_match.group(1))
 
-        # 4. Haftalik sotuv soni (so'nggi haftada 74 dona sotildi)
+        # 4. Weekly Sales & Exact Badge Text (Measurement Evidence)
         reported_sales = None
-        sales_match = re.search(r"so[\'’`]?nggi\s+haftada\s+(\d+)\s+dona\s+sotildi", page_text, re.IGNORECASE)
+        raw_badge_text = None
+        sales_pattern = r"(?:Xaridorgir\s+kitob\s*[-–—]\s*)?so['’`]?nggi\s+haftada\s+(\d+)\s+dona\s+sotildi"
+        sales_match = re.search(sales_pattern, page_text, re.IGNORECASE)
         if sales_match:
+            raw_badge_text = sales_match.group(0).strip()
             reported_sales = int(sales_match.group(1))
 
-        # 5. Bo'limdagi o'rni (category_rank: #1-o'rin)
+        # 5. Category Rank (#1-o'rin)
         category_rank = None
-        rank_match = re.search(r"#(\d+)-o[\'’`]?rin", page_text, re.IGNORECASE)
+        rank_match = re.search(r"#(\d+)-o['’`]?rin", page_text, re.IGNORECASE)
         if rank_match:
             category_rank = int(rank_match.group(1))
 
-        # 6. Muqova turi, Sahifalar soni, Nashriyot
+        # 6. Physical Attributes & Metadata
         cover_type = "yumshoq"
         if "qattiq" in page_text.lower():
             cover_type = "qattiq"
@@ -81,33 +82,40 @@ def parse_book_page(url: str):
             page_count = int(pages_match.group(1))
 
         publisher = "Qamar"
-        pub_match = re.search(r"Nashriyot\s*\n*\s*([A-Za-z0-9_\-\s]+)", page_text)
+        pub_match = re.search(r"Nashriyot\s*[:\n]*\s*([A-Za-z0-9_\-\s]+)", page_text)
         if pub_match:
-            publisher = pub_match.group(1).strip()
+            publisher = pub_match.group(1).split("\n")[0].strip()
 
+        # Category from breadcrumbs or fallback
         category = "Badiiy bo'lmagan"
+        breadcrumbs = soup.find_all(string=re.compile(r"Katalog\s*/", re.IGNORECASE))
+        if breadcrumbs:
+            parts = breadcrumbs[0].split("/")
+            if len(parts) > 1:
+                category = parts[1].strip()
 
         book_data = {
             "title": title,
-            "author": author if author != "Noma'lum" else "Ali Haydar Zug'urlu",
+            "author": author,
             "publisher": publisher,
             "category": category,
             "cover_type": cover_type,
             "page_count": page_count,
             "price_uzs": price,
             "reported_weekly_sales": reported_sales,
+            "raw_badge_text": raw_badge_text,
             "category_rank": category_rank,
             "source_url": url,
-            "week_number": 6,
+            "week_number": week_number,
             "observation_date": str(date.today()),
             "is_in_stock": 1 if "sotuvda bor" in page_text.lower() else 0
         }
 
-        logging.info(f"Muvaffaqiyatli ajratildi: {title} | Sotuv: {reported_sales} | O'rin: {category_rank}")
+        logging.info(f"Parsed: {title} | Badge: {raw_badge_text} | Sales: {reported_sales}")
         return book_data
 
     except Exception as e:
-        logging.error(f"Xatolik yuz berdi ({url}): {str(e)}")
+        logging.error(f"Error scraping {url}: {str(e)}")
         return None
 
 def save_to_database(data: dict):
@@ -118,12 +126,20 @@ def save_to_database(data: dict):
     cursor = conn.cursor()
 
     try:
+        cursor.execute("PRAGMA foreign_keys = ON;")
+
+        # Kitob ma'lumotlarini saqlash (SQL ichida Noma'lum o'rniga parametr ishlatamiz)
         cursor.execute("""
             INSERT INTO books (title, author, publisher, category, cover_type, page_count, source_url)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(source_url) DO UPDATE SET
-                author=excluded.author,
+                title=excluded.title,
+                author=CASE
+                    WHEN excluded.author IS NOT NULL AND excluded.author != 'Noma''lum' THEN excluded.author
+                    ELSE books.author
+                END,
                 publisher=excluded.publisher,
+                category=excluded.category,
                 cover_type=excluded.cover_type,
                 page_count=coalesce(excluded.page_count, books.page_count)
         """, (
@@ -134,18 +150,22 @@ def save_to_database(data: dict):
         cursor.execute("SELECT book_id FROM books WHERE source_url = ?", (data["source_url"],))
         book_id = cursor.fetchone()[0]
 
+        # Haftalik kuzatuvni saqlash
         cursor.execute("""
             INSERT INTO weekly_observations
-            (book_id, week_number, observation_date, price_uzs, reported_weekly_sales, category_rank, is_in_stock)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (book_id, week_number, observation_date, price_uzs, reported_weekly_sales, raw_badge_text, category_rank, is_in_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(book_id, week_number) DO UPDATE SET
+                observation_date=excluded.observation_date,
                 price_uzs=excluded.price_uzs,
                 reported_weekly_sales=excluded.reported_weekly_sales,
+                raw_badge_text=excluded.raw_badge_text,
                 category_rank=excluded.category_rank,
                 is_in_stock=excluded.is_in_stock
         """, (
             book_id, data["week_number"], data["observation_date"],
             data["price_uzs"], data["reported_weekly_sales"],
+            data["raw_badge_text"],
             data["category_rank"], data["is_in_stock"]
         ))
 
@@ -159,7 +179,7 @@ def save_to_database(data: dict):
         conn.close()
 
 if __name__ == "__main__":
-    urls_file = os.path.join(BASE_DIR, "data", "cohort_urls.txt")
+    urls_file = os.path.join(PROJECT_ROOT, "data", "cohort_urls.txt")
 
     if os.path.exists(urls_file):
         with open(urls_file, "r", encoding="utf-8") as f:
@@ -168,11 +188,11 @@ if __name__ == "__main__":
         print(f"Jami {len(urls)} ta kitob skreyp qilinmoqda...")
         for idx, url in enumerate(urls, 1):
             print(f"[{idx}/{len(urls)}] O'qilmoqda: {url}")
-            data = parse_book_page(url)
+            data = parse_book_page(url, week_number=6)
             if data:
                 save_to_database(data)
-                print(f"  -> Saqlandi: {data['title']} (Sotuv: {data['reported_weekly_sales']}, Narx: {data['price_uzs']})")
-            time.sleep(2)  # Serverni ortiqcha yuklamaslik uchun kutish (rate-limiting)
+                print(f"  -> Saqlandi: {data['title']} | Badge: '{data['raw_badge_text']}' | Sotuv: {data['reported_weekly_sales']}")
+            time.sleep(2)
         print("\nBarcha kitoblar muvaffaqiyatli saqlandi!")
     else:
         print("data/cohort_urls.txt fayli topilmadi.")

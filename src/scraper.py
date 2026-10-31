@@ -29,7 +29,7 @@ def clean_number(text: str):
     nums = re.findall(r"\d+", text.replace(" ", "").replace("\xa0", ""))
     return int("".join(nums)) if nums else None
 
-def parse_book_page(url: str, week_number: int = 6):
+def parse_book_page(url: str, week_number: int = 7):
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
         if response.status_code != 200:
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         print(f"Jami {len(urls)} ta kitob skreyp qilinmoqda...")
         for idx, url in enumerate(urls, 1):
             print(f"[{idx}/{len(urls)}] O'qilmoqda: {url}")
-            data = parse_book_page(url, week_number=6)
+            data = parse_book_page(url, week_number=7)
             if data:
                 save_to_database(data)
                 print(f"  -> Saqlandi: {data['title']} | Badge: '{data['raw_badge_text']}' | Sotuv: {data['reported_weekly_sales']}")

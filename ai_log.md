@@ -41,3 +41,17 @@ Category: Green - AI Integrated (Coursework Brief Compliant)
   3. Finalized 60 unique book URLs in `data/cohort_urls.txt` with verified rolling 7-day sales badges.
   4. Executed Week 6 baseline snapshot: 60 books and 60 non-null weekly observations stored in `data/books.db`.
   5. Verified code health with `pytest` (all 3 tests passed).
+
+
+---
+
+## Log Entry 3: Week 7 Longitudinal Snapshot Captured
+* **Date:** 2026-10-31 (Teaching Week 7)
+* **Milestone:** Second Longitudinal Observation Completed
+* **Implementation Details:**
+  1. Updated scraper target week to `week_number=7`.
+  2. Executed non-destructive crawl across the fixed 60-book cohort without resetting database.
+  3. Stored 60 new observations in `weekly_observations` table in `data/books.db` (total dataset: 120 observations).
+  4. Observed real-world dynamic sales shifts (e.g., volume spikes and normal rolling decay).
+  5. Handled edge cases where rolling badges temporarily dropped below reportable thresholds (stored as NULLs preserving longitudinal integrity).
+  6. Verified test suite integrity with `pytest` (3 passed).

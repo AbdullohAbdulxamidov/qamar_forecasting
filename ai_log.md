@@ -55,3 +55,16 @@ Category: Green - AI Integrated (Coursework Brief Compliant)
   4. Observed real-world dynamic sales shifts (e.g., volume spikes and normal rolling decay).
   5. Handled edge cases where rolling badges temporarily dropped below reportable thresholds (stored as NULLs preserving longitudinal integrity).
   6. Verified test suite integrity with `pytest` (3 passed).
+
+
+---
+
+## Log Entry 4: Observation Snapshot 3 Captured (Calendar Week 8 / Reading Week)
+* **Date:** 2026-11-08 (End of Reading Week)
+* **Milestone:** Third Longitudinal Observation Wave Finalized (180 Total Observations)
+* **Implementation Details:**
+  1. Maintained strict 7-day rolling cadence ($\Delta t \approx 7 \text{ days}$) across the academic calendar by collecting data during university Reading Week.
+  2. Recorded under `week_number=8` to preserve temporal progression for validation modeling.
+  3. Captured 60 records across the fixed cohort: observed active market shifts (e.g., "Ko'zlaringni haromdan saqla" surging to 287 units, "D bo'limi" stabilizing to 155 units).
+  4. Non-reporting books handled as missing badge values (`NULL`), protecting cohort integrity without data leakage.
+  5. Test suite verified via `pytest` (all 3 tests passing).
